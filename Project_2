@@ -1,0 +1,107 @@
+# Load libraries
+library(tidyverse)
+library(psych)
+library(car)
+
+# Load data
+data <- read.csv("C:/Users/hp/Downloads/who_wb_hdi_env_gov_2019_final.csv")
+
+# Select relevant variables
+env_vars <- data %>%
+  select(pm25, water_access, forest_area, renewable_energy, health_exp, co2_emissions)
+
+# Filter complete cases
+complete_rows <- complete.cases(env_vars)
+env_vars <- env_vars[complete_rows, ]
+data_clean <- data[complete_rows, ]
+
+# -----------------------------------------
+# 1. PCA Assumptions
+# -----------------------------------------
+
+# KMO Test
+cat("KMO Test:\n")
+print(KMO(env_vars))
+
+# Bartlett's Test
+cat("\nBartlett's Test:\n")
+print(cortest.bartlett(cor(env_vars), n = nrow(env_vars)))
+
+# -----------------------------------------
+# 2. PCA
+# -----------------------------------------
+
+# Standardize variables
+env_scaled <- scale(env_vars)
+
+# Perform PCA
+pca_result <- prcomp(env_scaled, center = TRUE, scale. = TRUE)
+
+# Scree plot
+
+plot(pca_result, type = "lines", main = "Scree Plot of PCA")
+
+# Eigenvalues
+eigenvalues <- pca_result$sdev^2
+cat("\nEigenvalues:\n")
+print(eigenvalues)
+
+# Cumulative Variance
+cat("\nCumulative Variance:\n")
+print(cumsum(eigenvalues) / sum(eigenvalues))
+
+# Use first 3 components
+pc_scores <- pca_result$x[, 1:3]
+explained_var <- summary(pca_result)$importance[2, 1:3]
+
+# Weighted composite index
+EQI_weighted <- rowSums(t(t(pc_scores) * explained_var))
+data_clean$Env_Health_Index_PC3 <- EQI_weighted
+
+# -----------------------------------------
+# 3. Multivariate Regression
+# -----------------------------------------
+
+# Response matrix
+Y <- cbind(data_clean$hdi, data_clean$life_expectancy)
+
+# Fit multivariate regression
+fit_mv <- lm(Y ~ Env_Health_Index_PC3, data = data_clean)
+cat("\nMultivariate Regression Summary:\n")
+summary(fit_mv)
+
+# -----------------------------------------
+# 4. Model Diagnostics
+# -----------------------------------------
+
+# Residuals vs Fitted (linearity)
+
+plot(fit_mv$fitted.values[,1], fit_mv$residuals[,1],
+     main = "Residuals vs Fitted (HDI)", xlab = "Fitted HDI", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+
+plot(fit_mv$fitted.values[,2], fit_mv$residuals[,2],
+     main = "Residuals vs Fitted (Life Expectancy)", xlab = "Fitted Life Exp", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+
+# Q-Q plots (normality)
+
+qqnorm(fit_mv$residuals[,1], main = "Q-Q Plot (HDI)")
+qqline(fit_mv$residuals[,1], col = "red")
+
+
+
+qqnorm(fit_mv$residuals[,2], main = "Q-Q Plot (Life Expectancy)")
+qqline(fit_mv$residuals[,2], col = "red")
+
+
+# Scale-location plots (homoscedasticity)
+
+# Scale-Location plots
+par(mfrow=c(1,2))
+plot(fit_mv, which = 3)  # For HDI
+plot(model_life, which = 3) # For Life Expectancy
+
+
