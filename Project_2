@@ -104,4 +104,37 @@ par(mfrow=c(1,2))
 plot(fit_mv, which = 3)  # For HDI
 plot(model_life, which = 3) # For Life Expectancy
 
+#----------------------------------------------------
+# Multivariate Normality Test
+#----------------------------------------------------
+# Load necessary libraries
+library(MVN)       # For multivariate normality tests
+library(ggplot2)   # For visualization
+library(mvnormtest)
+## 1. Graphical methods
+
+# Scatter plot
+ggplot(data, aes(x = hdi, y = life_expectancy)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle("Scatter Plot of HDI vs Life Expectancy")
+
+# Q-Q plot for multivariate normality
+mvn(data[, c("hdi", "life_expectancy")], mvnTest = "mardia", multivariatePlot = "qq")
+
+## 2. Statistical tests
+
+# Mardia's test for multivariate normality
+mvn(data[, c("hdi", "life_expectancy")], mvnTest = "mardia")
+
+# Henze-Zirkler test
+mvn(data[, c("hdi", "life_expectancy")], mvnTest = "hz")
+
+# Royston test
+mvn(data[, c("hdi", "life_expectancy")], mvnTest = "royston")
+
+## 3. Alternative approach using mvnormtest package
+
+mshapiro.test(t(data[, c("hdi", "life_expectancy")]))
+
 
